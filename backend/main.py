@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.database import engine, Base
+from routes import transaction
 
 # Create all tables in the database
 Base.metadata.create_all(bind=engine)
@@ -15,6 +16,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register routes
+app.include_router(transaction.router)
 
 @app.get("/")
 def root():
