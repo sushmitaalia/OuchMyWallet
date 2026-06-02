@@ -1,9 +1,5 @@
-// function YearlyView() {
-//   return <div>Yearly View - Coming Soon</div>;
-// }
-// export default YearlyView;
 import { useState, useEffect } from "react";
-import { getYearlyTransactions, getMonthlyTransactions } from "../api/transactions";
+import { getYearlyTransactions } from "../api/transactions";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -11,224 +7,91 @@ const MONTHS = [
 ];
 
 function YearlyView() {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [yearlyData, setYearlyData] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [monthTransactions, setMonthTransactions] = useState([]);
-
-  const currentYear = new Date().getFullYear();
-
-  // Example: last 5 years
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const [year, setYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    fetchYearlyData(currentYear);
-  }, []);
+    fetchYearlyData(year);
+  }, [year]);
 
-  const fetchYearlyData = async (year) => {
-    const data = await getYearlyTransactions(year);
+  const fetchYearlyData = async (y) => {
+    const data = await getYearlyTransactions(y);
     setYearlyData(data);
   };
 
-  const handleYearClick = async (year) => {
-    setSelectedYear(year);
-    setSelectedMonth(null);
-    setMonthTransactions([]);
-    await fetchYearlyData(year);
-  };
-
-  const handleMonthClick = async (month) => {
-    if (selectedMonth === month) {
-      setSelectedMonth(null);
-      setMonthTransactions([]);
-      return;
-    }
-
-    setSelectedMonth(month);
-
-    const data = await getMonthlyTransactions(selectedYear, month + 1);
-    setMonthTransactions(data);
-  };
-
-  const yearlyTotal = yearlyData.reduce((sum, m) => sum + m.total, 0);
+  const total = yearlyData.reduce((sum, m) => sum + m.total, 0);
 
   return (
     <div style={styles.container}>
       <h2 style={styles.title}>Yearly Overview</h2>
 
       {/* Year Selector */}
-      <div style={styles.yearGrid}>
-        {years.map((year) => (
-          <button
-            key={year}
-            style={{
-              ...styles.yearBtn,
-              ...(selectedYear === year ? styles.yearBtnActive : {})
-            }}
-            onClick={() => handleYearClick(year)}
-          >
-            {year}
-          </button>
-        ))}
+      <div style={styles.yearSelector}>
+        <button style={styles.arrowBtn} onClick={() => setYear(year - 1)}>◀</button>
+        <span style={styles.year}>{year}</span>
+        <button style={styles.arrowBtn} onClick={() => setYear(year + 1)}>▶</button>
       </div>
 
-      {/* Year Summary */}
-      <div style={styles.summary}>
-        <h3 style={styles.yearTitle}>{selectedYear}</h3>
-
-        {yearlyData.length === 0 ? (
-          <p style={styles.empty}>No expenses this year!</p>
-        ) : (
-          <>
-            {yearlyData.map((month) => (
-              <div key={month.month}>
+      {/* Yearly Data */}
+      {yearlyData.length === 0 ? (
+        <p style={styles.empty}>No expenses for {year}!</p>
+      ) : (
+        <div style={styles.list}>
+          {yearlyData.map((m) => (
+            <div key={m.month} style={styles.row}>
+              <span style={styles.monthName}>{MONTHS[m.month - 1]}</span>
+              <div style={styles.barContainer}>
                 <div
-                  style={styles.monthRow}
-                  onClick={() => handleMonthClick(month.month - 1)}
-                >
-                  <span>{MONTHS[month.month - 1]}</span>
-
-                  <span style={styles.monthAmount}>
-                    ৳{month.total.toFixed(2)}
-                  </span>
-
-                  <span style={styles.arrow}>
-                    {selectedMonth === month.month - 1 ? "▲" : "▼"}
-                  </span>
-                </div>
-
-                {/* Monthly Details */}
-                {selectedMonth === month.month - 1 && (
-                  <div style={styles.monthDetails}>
-                    {monthTransactions.map((day) => (
-                      <div key={day.date} style={styles.transaction}>
-                        <span>{day.date}</span>
-
-                        <span style={styles.txAmount}>
-                          ৳{day.total.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  style={{
+                    ...styles.bar,
+                    width: `${(m.total / Math.max(...yearlyData.map(d => d.total))) * 100}%`
+                  }}
+                />
               </div>
-            ))}
-
-            <div style={styles.total}>
-              <span>Total for {selectedYear}</span>
-
-              <span style={styles.totalAmount}>
-                ৳{yearlyTotal.toFixed(2)}
-              </span>
+              <span style={styles.amount}>৳{m.total.toFixed(2)}</span>
             </div>
-          </>
-        )}
-      </div>
+          ))}
+
+          <div style={styles.total}>
+            <span>Total for {year}</span>
+            <span style={styles.totalAmount}>৳{total.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const styles = {
-  container: {
-    maxWidth: "600px",
-    margin: "0 auto"
-  },
-
-  title: {
-    fontSize: "24px",
-    marginBottom: "24px"
-  },
-
-  yearGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "10px",
+  container: { maxWidth: "600px", margin: "0 auto" },
+  title: { fontSize: "24px", marginBottom: "24px" },
+  yearSelector: {
+    display: "flex", alignItems: "center", gap: "20px",
     marginBottom: "32px"
   },
-
-  yearBtn: {
-    padding: "10px",
-    borderRadius: "8px",
-    border: "1px solid #2a2a4a",
-    backgroundColor: "#1a1a2e",
-    color: "#a0a0b0",
-    cursor: "pointer",
-    fontSize: "14px"
+  arrowBtn: {
+    background: "none", border: "1px solid #2a2a4a", color: "white",
+    padding: "8px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "16px"
   },
-
-  yearBtnActive: {
-    backgroundColor: "#e94560",
-    color: "white",
-    border: "1px solid #e94560"
+  year: { fontSize: "22px", fontWeight: "bold" },
+  empty: { color: "#a0a0b0", textAlign: "center", marginTop: "40px" },
+  list: { display: "flex", flexDirection: "column", gap: "12px" },
+  row: {
+    display: "flex", alignItems: "center", gap: "12px",
+    padding: "12px 16px", backgroundColor: "#1a1a2e", borderRadius: "8px"
   },
-
-  summary: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: "12px",
-    padding: "20px"
+  monthName: { width: "90px", fontSize: "14px" },
+  barContainer: {
+    flex: 1, height: "8px", backgroundColor: "#2a2a4a", borderRadius: "4px"
   },
-
-  yearTitle: {
-    fontSize: "20px",
-    marginBottom: "16px"
-  },
-
-  empty: {
-    color: "#a0a0b0",
-    textAlign: "center"
-  },
-
-  monthRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px 0",
-    borderBottom: "1px solid #2a2a4a",
-    cursor: "pointer"
-  },
-
-  monthAmount: {
-    color: "#e94560",
-    fontWeight: "bold"
-  },
-
-  arrow: {
-    color: "#a0a0b0",
-    fontSize: "12px"
-  },
-
-  monthDetails: {
-    backgroundColor: "#16213e",
-    borderRadius: "8px",
-    padding: "12px",
-    margin: "8px 0"
-  },
-
-  transaction: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "6px 0",
-    color: "#a0a0b0",
-    fontSize: "14px"
-  },
-
-  txAmount: {
-    color: "white"
-  },
-
+  bar: { height: "100%", backgroundColor: "#e94560", borderRadius: "4px" },
+  amount: { width: "100px", textAlign: "right", color: "#e94560", fontWeight: "bold", fontSize: "14px" },
   total: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "16px",
-    paddingTop: "16px",
-    borderTop: "2px solid #e94560"
+    display: "flex", justifyContent: "space-between",
+    marginTop: "8px", padding: "16px", backgroundColor: "#1a1a2e",
+    borderRadius: "8px", borderTop: "2px solid #e94560"
   },
-
-  totalAmount: {
-    fontSize: "18px",
-    fontWeight: "bold",
-    color: "#e94560"
-  }
+  totalAmount: { fontSize: "18px", fontWeight: "bold", color: "#e94560" }
 };
 
 export default YearlyView;
