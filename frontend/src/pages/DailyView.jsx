@@ -6,12 +6,17 @@ function DailyView() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const today = new Date().toISOString().split("T")[0];
 
   const fetchTransactions = async () => {
-    const data = await getDailyTransactions(today);
-    setTransactions(data);
+    try {
+      const data = await getDailyTransactions(today);
+      setTransactions(data);
+    } catch (err) {
+      console.error("Failed to fetch transactions", err);
+    }
   };
 
   useEffect(() => {
@@ -21,16 +26,25 @@ function DailyView() {
   const handleAdd = async () => {
     if (!description || !amount) return;
     setLoading(true);
-    await createTransaction(description, parseFloat(amount), today);
-    setDescription("");
-    setAmount("");
-    await fetchTransactions();
+    setError("");
+    try {
+      await createTransaction(description, parseFloat(amount), today);
+      setDescription("");
+      setAmount("");
+      await fetchTransactions();
+    } catch (err) {
+      setError("Failed to add transaction. Make sure you are logged in.");
+    }
     setLoading(false);
   };
 
   const handleDelete = async (id) => {
-    await deleteTransaction(id);
-    await fetchTransactions();
+    try {
+      await deleteTransaction(id);
+      await fetchTransactions();
+    } catch (err) {
+      console.error("Failed to delete", err);
+    }
   };
 
   const total = transactions.reduce((sum, t) => sum + t.amount, 0);
@@ -55,11 +69,14 @@ function DailyView() {
           placeholder="Amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
         <button style={styles.button} onClick={handleAdd} disabled={loading}>
           {loading ? "Adding..." : "Add"}
         </button>
       </div>
+
+      {error && <p style={styles.error}>{error}</p>}
 
       {/* Transaction List */}
       <div style={styles.list}>
@@ -89,36 +106,40 @@ function DailyView() {
 
 const styles = {
   container: { maxWidth: "600px", margin: "0 auto" },
-  title: { fontSize: "24px", marginBottom: "4px" },
-  date: { color: "#a0a0b0", marginBottom: "24px" },
-  form: { display: "flex", gap: "12px", marginBottom: "24px" },
+  title: { fontSize: "24px", marginBottom: "4px", color: "#2d2d2d" },
+  date: { color: "#888", marginBottom: "24px" },
+  form: { display: "flex", gap: "12px", marginBottom: "16px" },
   input: {
     flex: 1, padding: "10px 14px", borderRadius: "8px",
-    border: "1px solid #2a2a4a", backgroundColor: "#1a1a2e",
-    color: "white", fontSize: "14px"
+    border: "1px solid #e0e0e0", backgroundColor: "white",
+    color: "#2d2d2d", fontSize: "14px", outline: "none",
   },
   button: {
     padding: "10px 20px", borderRadius: "8px", border: "none",
-    backgroundColor: "#e94560", color: "white", cursor: "pointer", fontSize: "14px"
+    backgroundColor: "#7c9a7e", color: "white", cursor: "pointer", fontSize: "14px",
+    fontWeight: "bold",
   },
+  error: { color: "#e05c5c", fontSize: "13px", marginBottom: "12px" },
   list: { display: "flex", flexDirection: "column", gap: "10px" },
-  empty: { color: "#a0a0b0", textAlign: "center", marginTop: "40px" },
+  empty: { color: "#aaa", textAlign: "center", marginTop: "40px" },
   item: {
     display: "flex", alignItems: "center", padding: "14px 18px",
-    backgroundColor: "#1a1a2e", borderRadius: "8px", gap: "12px"
+    backgroundColor: "white", borderRadius: "8px", gap: "12px",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
   },
-  itemDesc: { flex: 1, fontSize: "15px" },
-  itemAmount: { color: "#e94560", fontWeight: "bold", fontSize: "15px" },
+  itemDesc: { flex: 1, fontSize: "15px", color: "#2d2d2d" },
+  itemAmount: { color: "#7c9a7e", fontWeight: "bold", fontSize: "15px" },
   deleteBtn: {
-    background: "none", border: "none", color: "#a0a0b0",
+    background: "none", border: "none", color: "#ccc",
     cursor: "pointer", fontSize: "16px"
   },
   total: {
     display: "flex", justifyContent: "space-between", alignItems: "center",
-    marginTop: "24px", padding: "16px 18px", backgroundColor: "#1a1a2e",
-    borderRadius: "8px", borderTop: "2px solid #e94560"
+    marginTop: "24px", padding: "16px 18px", backgroundColor: "white",
+    borderRadius: "8px", borderLeft: "4px solid #7c9a7e",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
   },
-  totalAmount: { fontSize: "20px", fontWeight: "bold", color: "#e94560" }
+  totalAmount: { fontSize: "20px", fontWeight: "bold", color: "#7c9a7e" }
 };
 
 export default DailyView;
